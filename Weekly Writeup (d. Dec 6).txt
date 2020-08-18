@@ -1,0 +1,287 @@
+Team Bryce Canyon: Weekly Update 
+
+12/6/19
+
+With the final dataset now created, cleaned, formatted, and with features engineered, the only remaining task is to cross 
+validate some models and to select the one that is most effective. All final deliverables regarding the correlation analysis 
+have been completed, and we aim to get the machine learning portion finalized soon so we can turn to the final deliverables 
+once again. A useful find from this past week is the pd.Categorical function that allows pandas dataframe columns to be
+viewed as factors, in the manner done by R. Considering scikit-learn's incompatibility with categorical features (not across the board, but for many ML models this is the case), this will likely prove useful!
+
+
+
+12/2/19
+
+This week we spent time producing our final dataset that we will be using to train our model. This considerably took a lot of time. 
+Each observation represents a single job posting occurence by a company.
+Thus, our final dataset consists of the following features:
+- ticker: the company's stock ticker
+- post_date: the date the jobs(s) posted
+- njobs_on_date: the number of other jobs posted on that date by that company
+- salary: the associated salary of the job
+- city: the city the job was posted in
+- state: the state the job was posted in
+- close: that company's closing stock price that day
+- prev_90_day_pct_change: the prev 90 day percent change in company's stock price
+- pct_change_90_market: the prev 90 day pct change in the market (as measured by change in S&P500 Index)
+- pct_change_90_stock (DEPENDENT VARIABLE): the next 90 day percent change in the the company's stock price
+
+The following obstacles were encountered:
+- Missing Salary: resolved by imputing the median salary of all postings in the dataset. A better approach: impute the median of job salaries posted by the specific company only
+- Missing City, State: resolved by simply deleting the observation in question (This resulted in around 0.01% of data being lost - so it's justifiable)
+- While one-hot encoding the categorical data (ticker, city, state, etc.), we encountered, a massive latency, and a subsequent memory error while working on the ts2 machines. 
+While we are open to suggestions on how to resolve it. Our current approach is to encode each categorical variable one by one rather than all at the same time, and also, 
+frequently write to csv.
+
+Once we are done with the data preprocessing, we hope to test the following models as a team, and report our results:
+- Regression (Multiple linear regression, LASSO regression, Ridge Regression)
+- Regression Tree
+- Random Forest
+- Boosted Tree
+- KNN
+
+
+ 
+
+
+11/22/19
+
+This week, we not only completed the analysis detailed below (Method A), but also implemented a simpler method to use as a
+validation set (Method B). We found that Method A tend to be biased by companies that naturally have greater fluctuation in 
+their stock prices. This makes sense, but results in a tendency to recommend more penny stocks. Given our knowledge of
+financial markets and penny stocks, we have determined that these results should be "taken with a grain of salt" and penny
+stocks should potentially be filtered out by any future groups (NU or Greenwich) that are examining these results. To help
+facilitate this and to validate Method A, we developed Method B:
+
+Method B:
+ For each ticker, define L1 and L2
+    L1 = [# jobs posted on day 1, # jobs posted on day 2, ... , # jobs posted on day N]
+    L2 = [pct_chg_adj_90 for day 1, pct_chg_adj_90 for day 2, ... , pct_chg_adj_90 for day N]
+        with pct_chg_adj_90 = [(pct change in the ticker's closing price 90 days from current day) -
+                               (pct change in the market's closing price 90 days from current day)]
+        and with day 1 representing the first day in 2018 for which jobs were posted by that company and day N representing
+            the most recent date on which jobs were posted for that company.
+ We then compute cor(L1, L2) for each ticker and the p-value associated with that correlation.
+ Companies can be ranked based on cor(L1, L2) where p-value < 0.1
+ 
+ 
+It was found that Method B somewhat corroborates Method A, but not entirely, as expected. There is less bias towards
+low-price, high-fluctuation stocks. Out of the top 100 across both Method A and Method B, there are 9 shared tickers. As we
+conclude this part of the analysis (correlation) we have the following remarks:
+
+1) We highly recommend consulting both of the lists we created, using both Method A and Method B and cross checking them
+2) We highly recommend that you exercise extreme caution in investing in any penny stocks,
+
+HOW IS 'YOU?'
+
+not to the point that we would 
+   recommend against investment in ANY penny stocks, but to the point that we would recommend that any risk-averse firm
+   base investment in a penny stock almost entirely on factors that do not relate to that penny stock's location on any of our
+   lists
+3) We find that a 90-day window does not appear to necessarily be the "proper" window to use. (An)other group(s) investigated 
+   a 30-day window using their own methodologies. We suggest examining those results and cross-checking 
+   
+I DON'T UNDERSTAND THE STYLE OF WRITING. 
+"WE SUGGEST EXAMINING" - WHO SHOULD EXAMINE? I THINK IT SHOULD BE YOU. 
+   
+   with ours in order to     
+   determine whether there is a particular set of {methodology, window} that works well. We feel comfortable saying that we 
+   are not confident the 90-day window is the "proper" window to use because we have examined the historical stock prices of 
+   the tickers that top our lists and see that, even for those tickers that are not penny stocks, there is a mix of stocks,
+   including both stocks we'd want to have invested in and stocks we would not have wanted to have invested in.
+   
+Key Takeaways / Next Steps
+
+We feel confident that we have satisfied the requirements of this portion of the project. While it is unclear to us whether
+there is valuable information that would lead to financial gains, we believe simulated portfolios of the stocks contained in
+our lists should be developed and tested against each other. This next step allows for a more concrete assessment of whether
+the analysis that was conducted can be used in picking stocks.
+
+
+
+
+11/15/19
+
+This week we implemented the Mean Job Effect metric we had been developing last week. Since computing the metric took a long time, we approached the problem by subsetting:
+- We started by considering only the data that appears in 2018 or 2019. All data from prior to 2018 is old enough, and the jobs were identified as already being closed.
+
+WOULDN'T PARALLELISM HELP?
+
+- For each ticker, we got the latest posting and the first posting in the new dataset and determined the number of days between the postings. 
+- We removed all tickers that have less than a year's worth of data. Because we wanted to be sure that we're not being impacted by seasonality, so it made sense to throw away all data for any ticker that has less than a year of data
+- This brought the total number of rows of data to 6,971,527. This is down from about 10.2M to 7M, so a >30% reduction -- not a bad start. 
+- If we do the same thing except start from May 2018 instead of January 2018, we get 5,761,440 rows, a 45% reduction.
+
+
+Some conceptual challenges:
+- Our analysis views all job postings as being the same. So we're calculating the same numbers many times over, in most cases. 
+Case in Point: If a company posts 10 jobs in a day, each in a different state, the company has the metric calculated 10 separate times. 
+Realistically, we should be computingthe metric once and giving it a weight of 10 for that day. If we take everything from Jan 2018 onward, not May 2018, then we're down to 529,096 rows. 
+After further subsetting, we were able to reduce it to only 100,000 rows. Computing the metric for all companies takes about 2hr 45 minutes as a result. 
+
+GREAT JOB EXPEDITING THE PROCESS. 
+
+Our goals for this week are to further parallelize the model to reduce training time.
+ 
+11/8/19
+
+Our goal this week was to create a method in which we could rank the companies in terms of growth without a separate regression for each. To accomplish this, we calculated the 30-day rolling percent change in stock price for a given stock. The vector of these changes tells us the percent growth over 30 days, with the mean being denoted as X. With this in hand, we can find X for the n days leading up to a job posting, as well as X for the n days following a job posting. Equivalently, we can follow this approach to find X for the aggregated market. 
+
+Our final metric will comprise of the following:
+        M = [(X for n=30 days after posting (stock) - X for n=30 days before posting (stock)) + 
+                (X for n=30 days before posting(market) - X for n=30 days after posting(market)]
+                
+Before computing this metric for all companies, we will first filter by company subject to a minimum number of job postings (threshold will be selected through experimentation).
+
+Another way to look at M would be the "job effect", i.e. the effect on closing stock price that posting a job has after removing effect of general market movements. 
+
+Lastly, we can compute a mean "job effect" (M) for a given company by taking average of individual M values each time a job is posted. 
+
+We are currently in the process of coding up this methodology.
+
+Inspired by this week's lecture, we also did some EDA in parallel in order to better understand the data. Moreover, we did not have an understanding of the data.
+The following insights were uncovered:
+- There were encoding errors that prevented reading in master, tags, titles data.
+- [ROLES] there is corruption in the role column: there are datetime values in there.
+- [ROLES] "manager", "sales/marketing", "engineer" are the top 3 roles, accounting for close to ~3 million of total jobs posted.
+- [ROLES] distribution of roles seems to follow a power law distribution
+- [TIME LOG] overwhelmingly large number of jobs are closed, with a small fraction open.
+- [TAGS] Top 3 tags were "lead", "training", "professional", "high school diploma"
+
+The other visualizations scripts are included in the commit under EDA.py.
+
+11/1/19
+
+Taking into account Prof. Klabjan's discussion on proper coding practice, we've begun to create new code that adheres to the guidelines laid out in class. We've uploaded a function that loads market data from the S&P 500 and the NASDAQ Composite, which will be used as features in our model. We have also just learned that the data we have been using is sample data and not the true data, which actually lives in an AWS server to which we need to get remote access. We recently received access to the entire dataset. There were some critical software/technology issues with obtaining access, as we were unclear on how to access the remote server using CLI. However, we have now successfully obtained access to the remote server + data, and will began core EDA/predictive analyses on it beginning next week. 
+Obviously, this was an unexpected obstacle that has slowed us down this week, as we planned to do more data exploration and preparation for modeling. Following up on the 75% comment from last week - we picked the number 75% purely to illustrate that our idea was viable. This will likely become a hyperparameter in our model which we can tune as necessary. We are by no means wedded to any constant value such as 75%.
+
+GREAT JOB CHANGING THE CODE; I NOTED THAT SOME FILES ARE IN A GOOD SHAPE
+WHAT ARE THE TASKS AND GOALS FOR THIS WEEK? 
+
+10/25/19
+
+
+This week, we took a closer look at the data after following up with Diego regarding his feedback. With the intention to pursue the second plan suggested below (see update 10/18/19 3.49 p.m.), we attempted to find the companies with a sufficient number of job postings to successfully use them in analysis. We were able to find 163 companies with total number of job postings above the 75th percentile. This indicates that we will be able to continue pursuing our plan, as there will be enough data to build a meaningful model. Since we do not yet know whether that 75th percentile mark is the ideal value of the hyperparameter in our model-building process, we will proceed with this threshold for now until further deliberation. We also noticed that distribution of the number of job postings per tick is heavily right-skewed, which is something to keep an eye on when deciding our ultimate hyperparameter value.
+
+I DON'T QUITE UNDERSTAND WHAT'S THE BIG DEAL WITH 75%. 163 IS AN OKAY NUMBER SO GO WITH IT. YOU SHOULD ACTUALLY PAY ATTENTION HOW MANY INDUSTRY SECTORS ARE PRESENT AMONG THESE 163 COMPANIES. 
+
+We plan to next look into the potential features we can use in the model in more detail. Earlier, we suggested using NLP to synthesize information from the job postings. We discussed what type of information is available and what might be important. We've concluded that one very important thing to include is information regarding the type of job it is. Hiring managerial positions versus hiring entry level data scientists, for example, likely indicate very different things about the future of a company and its stock performance. We will continue to look into this information and as we begin to explore how we might go about actually extracting the information from the (dirty!!) dataset, and expect to have to bin the information so as to prevent model overfitting.
+
+
+
+As requested, we've uploaded a non-negligible amount of code.
+
+
+
+
+
+10/18/19 3.49 p.m.
+
+
+The Greenwich datasets provide information about the company name, the job posted, tags of requirements, the date of posting and the location. Also supplied are the SIC and NAICS codes along the tickers of the companies for which jobs were posted. However, the details of the stock movement of the corresponding tickers were not provided. This data was sourced from the Yahoo Finance python module, yfinance. As available, stock data was collected for each ticker from the date the job was posted until the current date. We also took the step of determining the percent change in stock price in the 30 days following the posting of the job. The following challenges have been encountered so far:
+1. The stock data for a few tickers are missing, indicating that these companies have been delisted from their exchange or that the listed ticker is not actually the true ticker.
+DISREGARD SUCH COMPANIES
+2. There is only one job - or when not one, still very few jobs - posted by many companies
+YOU SHOULD PICK COMPANIES WITH SUFFICIENT NUMBER OF POSTINGS (YOU NEED TO PLAY WITH 'SUFFICIENT')
+3. There is no ability to actually compute “correlation” of anything, although this is what was requested of us. With a time series of stock prices and a binary variable that indicates “yes a job was posted” or “no a job wasn’t posted,” we cannot actually provide any insight on whether the stock is moving a result of jobs having been posted.
+DON'T UNDERSTAND THIS. EVENTS ARE DEFINITELY CORRELATED WITH THE STOCK PRICE TIME SERIEIS. IF NO OTHER LINE OF ATTACH, YOU CAN STUDY THE AREA OF THE INTERVENTION ANALYSIS. 
+Ideas:
+1. Causal analysis: This would require a deep dive at a company level; one model would be required for every single ticker, which is not feasible given the time frame of this project. We would need to create an autoregressive model of stock price that introduces some binary variable “job added” as well as all other factors that might impact the price of a stock, from variables that measure the state of the general economy as well as company-specific variables that might be linked to stock price.
+WHY WOULD YOU NEED ONE MODEL PER SYMBOL? YOU CAN HAVE A SINGLE MODEL THAT IS CALIBRATED IN AN AUTOMATED FASHION FOR EACH SYMBOL. 
+2. Instead of idea (1), which quite likely would provide the most statistically meaningful results and results that are closest to what Greenwich is looking for, we could perform an abstraction of this idea. Since the goal is to identify which companies have the strongest positive relationship (and relationship of largest magnitude) between job posting and stock performance, we can calculate the percentage change in stock price. We could then construct a predictive model of the form:
+Response Variable: Percentage change in stock price over X days following posting
+Predictors: 
+* Percentage change in S&P 500 over X days following posting
+* Number of slots to fill
+* Salary associated with jobs posted
+* Other information, likely would need to be synthesized through NLP on the job posting 
+        We then can make only 1 model that combines all tickers and assess its predictive power,
+        specifically whether variables pertaining to the job play a role in predicting the response.
+YOU SHOULD DEFINITELY CONSIDER THIS OPTION
+3. Similar to idea (2), but slightly more complicated, we can include information regarding tickers that did not post jobs and include as a binary variable in the model “job posted.” In this case, we care about the statistical significance of the coefficient on that variable.
+=======
+Team Bryce Canyon: Weekly Update 
+
+11/8/19
+
+Our goal this week was to create a method in which we could rank the companies in terms of growth without a separate regression for each. To accomplish this, we calculated the 30-day rolling percent change in stock price for a given stock. The vector of these changes tells us the percent growth over 30 days, with the mean being denoted as X. With this in hand, we can find X for the n days leading up to a job posting, as well as X for the n days following a job posting. Equivalently, we can follow this approach to find X for the aggregated market. 
+
+Our final metric will comprise of the following:
+        M = [(X for n=30 days after posting (stock) - X for n=30 days before posting (stock)) + 
+                (X for n=30 days before posting(market) - X for n=30 days after posting(market)]
+                
+Before computing this metric for all companies, we will first filter by company subject to a minimum number of job postings (threshold will be selected through experimentation).
+
+Another way to look at M would be the "job effect", i.e. the effect on closing stock price that posting a job has after removing effect of general market movements. 
+
+Lastly, we can compute a mean "job effect" (M) for a given company by taking average of individual M values each time a job is posted. 
+
+We are currently in the process of coding up this methodology.
+
+IT WOULD BE GREAT IF YOU CAN FINISH IT THIS WEEK. 
+
+Inspired by this week's lecture, we also did some EDA in parallel in order to better understand the data. Moreover, we did not have an understanding of the data.
+The following insights were uncovered:
+- There were encoding errors that prevented reading in master, tags, titles data.
+- [ROLES] there is corruption in the role column: there are datetime values in there.
+- [ROLES] "manager", "sales/marketing", "engineer" are the top 3 roles, accounting for close to ~3 million of total jobs posted.
+- [ROLES] distribution of roles seems to follow a power law distribution
+- [TIME LOG] overwhelmingly large number of jobs are closed.
+- [TAGS] Top 3 tags were "lead", "training", "professional", "high school diploma"
+
+I AM GLAD THE LECTURE WAS HELPFUL. 
+
+The other visualizations scripts are included in the commit under EDA.py.
+
+YOUR REPO IS A MESS AND SHOULD BE ORGANIZED IN A BETTER WAY. 
+
+11/1/19
+
+Taking into account Prof. Klabjan's discussion on proper coding practice, we've begun to create new code that adheres to the guidelines laid out in class. We've uploaded a function that loads market data from the S&P 500 and the NASDAQ Composite, which will be used as features in our model. We have also just learned that the data we have been using is sample data and not the true data, which actually lives in an AWS server to which we need to get remote access. We recently received access to the entire dataset. There were some critical software/technology issues with obtaining access, as we were unclear on how to access the remote server using CLI. However, we have now successfully obtained access to the remote server + data, and will began core EDA/predictive analyses on it beginning next week. 
+Obviously, this was an unexpected obstacle that has slowed us down this week, as we planned to do more data exploration and preparation for modeling. Following up on the 75% comment from last week - we picked the number 75% purely to illustrate that our idea was viable. This will likely become a hyperparameter in our model which we can tune as necessary. We are by no means wedded to any constant value such as 75%.
+
+GREAT JOB CHANGING THE CODE; I NOTED THAT SOME FILES ARE IN A GOOD SHAPE
+WHAT ARE THE TASKS AND GOALS FOR THIS WEEK? 
+
+10/25/19
+
+
+This week, we took a closer look at the data after following up with Diego regarding his feedback. With the intention to pursue the second plan suggested below (see update 10/18/19 3.49 p.m.), we attempted to find the companies with a sufficient number of job postings to successfully use them in analysis. We were able to find 163 companies with total number of job postings above the 75th percentile. This indicates that we will be able to continue pursuing our plan, as there will be enough data to build a meaningful model. Since we do not yet know whether that 75th percentile mark is the ideal value of the hyperparameter in our model-building process, we will proceed with this threshold for now until further deliberation. We also noticed that distribution of the number of job postings per tick is heavily right-skewed, which is something to keep an eye on when deciding our ultimate hyperparameter value.
+
+I DON'T QUITE UNDERSTAND WHAT'S THE BIG DEAL WITH 75%. 163 IS AN OKAY NUMBER SO GO WITH IT. YOU SHOULD ACTUALLY PAY ATTENTION HOW MANY INDUSTRY SECTORS ARE PRESENT AMONG THESE 163 COMPANIES. 
+
+We plan to next look into the potential features we can use in the model in more detail. Earlier, we suggested using NLP to synthesize information from the job postings. We discussed what type of information is available and what might be important. We've concluded that one very important thing to include is information regarding the type of job it is. Hiring managerial positions versus hiring entry level data scientists, for example, likely indicate very different things about the future of a company and its stock performance. We will continue to look into this information and as we begin to explore how we might go about actually extracting the information from the (dirty!!) dataset, and expect to have to bin the information so as to prevent model overfitting.
+
+
+
+As requested, we've uploaded a non-negligible amount of code.
+
+
+
+
+
+10/18/19 3.49 p.m.
+
+
+The Greenwich datasets provide information about the company name, the job posted, tags of requirements, the date of posting and the location. Also supplied are the SIC and NAICS codes along the tickers of the companies for which jobs were posted. However, the details of the stock movement of the corresponding tickers were not provided. This data was sourced from the Yahoo Finance python module, yfinance. As available, stock data was collected for each ticker from the date the job was posted until the current date. We also took the step of determining the percent change in stock price in the 30 days following the posting of the job. The following challenges have been encountered so far:
+1. The stock data for a few tickers are missing, indicating that these companies have been delisted from their exchange or that the listed ticker is not actually the true ticker.
+DISREGARD SUCH COMPANIES
+2. There is only one job - or when not one, still very few jobs - posted by many companies
+YOU SHOULD PICK COMPANIES WITH SUFFICIENT NUMBER OF POSTINGS (YOU NEED TO PLAY WITH 'SUFFICIENT')
+3. There is no ability to actually compute “correlation” of anything, although this is what was requested of us. With a time series of stock prices and a binary variable that indicates “yes a job was posted” or “no a job wasn’t posted,” we cannot actually provide any insight on whether the stock is moving a result of jobs having been posted.
+DON'T UNDERSTAND THIS. EVENTS ARE DEFINITELY CORRELATED WITH THE STOCK PRICE TIME SERIEIS. IF NO OTHER LINE OF ATTACH, YOU CAN STUDY THE AREA OF THE INTERVENTION ANALYSIS. 
+Ideas:
+1. Causal analysis: This would require a deep dive at a company level; one model would be required for every single ticker, which is not feasible given the time frame of this project. We would need to create an autoregressive model of stock price that introduces some binary variable “job added” as well as all other factors that might impact the price of a stock, from variables that measure the state of the general economy as well as company-specific variables that might be linked to stock price.
+WHY WOULD YOU NEED ONE MODEL PER SYMBOL? YOU CAN HAVE A SINGLE MODEL THAT IS CALIBRATED IN AN AUTOMATED FASHION FOR EACH SYMBOL. 
+2. Instead of idea (1), which quite likely would provide the most statistically meaningful results and results that are closest to what Greenwich is looking for, we could perform an abstraction of this idea. Since the goal is to identify which companies have the strongest positive relationship (and relationship of largest magnitude) between job posting and stock performance, we can calculate the percentage change in stock price. We could then construct a predictive model of the form:
+Response Variable: Percentage change in stock price over X days following posting
+Predictors: 
+* Percentage change in S&P 500 over X days following posting
+* Number of slots to fill
+* Salary associated with jobs posted
+* Other information, likely would need to be synthesized through NLP on the job posting 
+        We then can make only 1 model that combines all tickers and assess its predictive power,
+        specifically whether variables pertaining to the job play a role in predicting the response.
+YOU SHOULD DEFINITELY CONSIDER THIS OPTION
+3. Similar to idea (2), but slightly more complicated, we can include information regarding tickers that did not post jobs and include as a binary variable in the model “job posted.” In this case, we care about the statistical significance of the coefficient on that variable.
+>>>>>>> 85afb434d54a3c2726dbb855818603c92e0911fc:Week 4 Writeup (d. Nov 8).txt
